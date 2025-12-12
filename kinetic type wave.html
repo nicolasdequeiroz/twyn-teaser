@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Twyn Teaser - Compact Mesh</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #000;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        canvas {
+            display: block;
+            cursor: none;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 12px 16px;
+            text-align: left;
+            z-index: 1000;
+            width: 200px;
+            margin-top: 8px;
+            margin-bottom: 8px;
+            margin-left: 8px;
+            margin-right: 8px;
+            font-family: 'Courier New', monospace;
+        }
+        .overlay h1 {
+            color: #fff;
+            margin: 0 0 6px 0;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+        .overlay p {
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0 0 10px 0;
+            font-size: 10px;
+            line-height: 1.4;
+            position: absolute;
+            top: 38px;
+            left: 24px;
+            width: 200px;
+            height: 42px;
+        }
+        .pause-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 4px 12px;
+            cursor: pointer;
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
+            transition: all 0.2s ease;
+        }
+        .pause-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .pause-btn:active {
+            transform: scale(0.98);
+        }
+        .fps-display {
+            position: fixed;
+            top: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 8px 12px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
+            z-index: 1000;
+            margin-top: 8px;
+            margin-bottom: 8px;
+            margin-left: 8px;
+            margin-right: 8px;
+        }
+        .fullscreen-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 4px 12px;
+            cursor: pointer;
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
+            transition: all 0.2s ease;
+            margin-left: 0px;
+        }
+        .fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .fullscreen-btn:active {
+            transform: scale(0.98);
+        }
+        .overlay {
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+        .overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .copyright {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 12px 16px;
+            text-align: left;
+            z-index: 1000;
+            font-family: 'Courier New', monospace;
+        }
+        .copyright p {
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0;
+            font-size: 10px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="overlay">
+    <h1>The Code Comes to Life</h1>
+    <p data-cursor-element-id="cursor-el-5">Transforming the coldness of binary data into human, sovereign and living identity.</p>
+    <button class="pause-btn" id="pauseBtn">Pause</button>
+    <button class="fullscreen-btn" id="fullscreenBtn">Fullscreen</button>
+</div>
+<div class="copyright">
+    <p>© 2025, TWYN</p>
+</div>
+<div class="fps-display" id="fpsDisplay">FPS: --</div>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    let width, height;
+    let isPaused = false;
+    
+    // --- CONTENT ---
+    const keywords = ["SSI", "Decentralized", "ONEboarding", "BIX", "BioLock Chain"];
+    
+    function generateRandomString() {
+        let newStr = "";
+        const sequenceLength = 2053; 
+        
+        while(newStr.length < sequenceLength) {
+            // 15% chance of word
+            if (Math.random() < 0.15) {
+                const word = keywords[Math.floor(Math.random() * keywords.length)];
+                // ADJUSTMENT: Reduced padding. Only one space before to separate from previous.
+                // The next character (whether number or another word) will come right after.
+                newStr += " " + word; 
+            } else {
+                // Binary Noise
+                const r = Math.random();
+                if (r < 0.45) newStr += "0";
+                else if (r < 0.90) newStr += "1";
+                else newStr += " "; 
+            }
+        }
+        return newStr.substring(0, sequenceLength);
+    }
+
+    let textString = generateRandomString();
+    let textLen = textString.length;
+    const fontName = 'Courier New, monospace'; 
+    
+    // --- VISUAL ---
+    const colSpacing = 9;   
+    const rowSpacing = 11;  
+    
+    const maxFontSize = 14; 
+    const minFontSize = 2;  
+    
+    // --- ANIMATION ---
+    const waveSpeed = 0.03;      
+    const waveFrequency = 0.012; 
+    
+    const loopDuration = 1900;
+
+    // Timeline
+    const startDecodingFrame = 120;     
+    const decodingDuration = 250;       
+    
+    const startFaceFrame = 700;         
+    const faceFadeDuration = 150;       
+    
+    const startLogoTransition = 1100;    
+    const transitionDuration = 300;     
+    
+    const startResetFrame = 1600;
+    const resetDuration = 200;
+
+    // --- SVG PATHS ---
+    const logoPaths = [
+        "M57.0445 256.708H0C0 366.974 89.3889 456.363 199.656 456.363V399.319C120.894 399.319 57.0445 335.47 57.0445 256.708Z",
+        "M342.267 256.708H399.312C399.312 366.974 309.923 456.363 199.656 456.363V399.319C278.418 399.319 342.267 335.47 342.267 256.708Z",
+        "M159.725 0H102.68V256.7C102.68 310.258 146.098 353.676 199.656 353.676C253.214 353.676 296.631 310.258 296.631 256.7V216.769H239.587V256.7C239.587 278.754 221.709 296.631 199.656 296.631C177.602 296.631 159.725 278.754 159.725 256.7V114.089H268.109V57.0445H159.725V0Z",
+        "M0 85.5667C0 69.8143 12.7698 57.0445 28.5222 57.0445C44.2746 57.0445 57.0445 69.8143 57.0445 85.5667C57.0445 101.319 44.2746 114.089 28.5222 114.089C12.7698 114.089 0 101.319 0 85.5667Z"
+    ];
+    
+    const svgViewBox = { w: 400, h: 457 };
+
+    let time = 0;
+    let frameCount = 0;
+    
+    let logoMap = []; 
+    let cols = 0;
+    let rows = 0;
+    let maxDistFromCenter = 0;
+    let logoLayout = { scale: 1, x: 0, y: 0, path2D: null };
+    
+    // Performance tracking
+    let lastFpsTime = performance.now();
+    let fpsFrameCount = 0;
+    let currentFps = 0;
+    
+    // Font cache for optimization
+    const fontCache = new Map();
+    
+    // Mouse position tracking for magnetic hover effect
+    let mouseX = 0;
+    let mouseY = 0;
+    const magneticRadius = 100; // Distance of magnetic effect
+    const magneticStrength = 0.1; // Strength of repulsion
+
+    // --- HELPER FUNCTIONS ---
+    function gaussian(x, y, cx, cy, sigmaX, sigmaY, intensity) {
+        const dx = x - cx;
+        const dy = y - cy;
+        return intensity * Math.exp(-( (dx*dx)/(2*sigmaX*sigmaX) + (dy*dy)/(2*sigmaY*sigmaY) ));
+    }
+
+    function smoothstep(edge0, edge1, x) {
+        const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+        return t * t * (3 - 2 * t);
+    }
+
+    function lerp(start, end, t) {
+        return start * (1 - t) + end * t;
+    }
+
+    // --- FACE ---
+    function getFaceIntensity(dx, dy) {
+        const scale = 1.9;
+        const nx = dx / scale;
+        const ny = dy / scale;
+        let light = 0.0;
+        light += gaussian(nx, ny, 0, 0, 90, 120, 0.15); 
+        light += gaussian(nx, ny, 0, -60, 50, 35, 0.4); 
+        light += gaussian(nx, ny, 0, -10, 12, 45, 0.5); 
+        light += gaussian(nx, ny, 0, 45, 18, 15, 0.6);  
+        light += gaussian(nx, ny, -55, 10, 25, 30, 0.35); 
+        light += gaussian(nx, ny, 55, 10, 25, 30, 0.35);  
+        light += gaussian(nx, ny, 0, 140, 35, 25, 0.45); 
+        light += gaussian(nx, ny, 0, 90, 15, 6, 0.2); 
+        light += gaussian(nx, ny, 0, 105, 20, 8, 0.3); 
+        light += gaussian(nx, ny, -45, -45, 18, 10, 0.25); 
+        light += gaussian(nx, ny, 45, -45, 18, 10, 0.25); 
+        return Math.min(1.0, light);
+    }
+
+    // --- SETUP / RESIZE ---
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+
+        cols = Math.ceil(width / colSpacing);
+        rows = Math.ceil(height / rowSpacing);
+
+        maxDistFromCenter = Math.sqrt(Math.pow(width/2, 2) + Math.pow(height/2, 2));
+
+        const fitScale = Math.min(width / svgViewBox.w, height / svgViewBox.h) * 0.75;
+        const drawW = svgViewBox.w * fitScale;
+        const drawH = svgViewBox.h * fitScale;
+        const drawX = (width - drawW) / 2;
+        const drawY = (height - drawH) / 2;
+        
+        logoLayout.scale = fitScale;
+        logoLayout.x = drawX;
+        logoLayout.y = drawY;
+        logoLayout.path2D = new Path2D(logoPaths.join(" "));
+
+        const gridFitScale = Math.min(cols / svgViewBox.w, rows / svgViewBox.h) * 0.75;
+        const gridDrawW = svgViewBox.w * gridFitScale;
+        const gridDrawH = svgViewBox.h * gridFitScale;
+        const gridDrawX = (cols - gridDrawW) / 2;
+        const gridDrawY = (rows - gridDrawH) / 2;
+
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = cols;   
+        offCanvas.height = rows;
+        const offCtx = offCanvas.getContext('2d');
+
+        offCtx.fillStyle = '#000';
+        offCtx.fillRect(0,0, cols, rows);
+        offCtx.shadowColor = '#FFF';
+        offCtx.shadowBlur = 10; 
+        offCtx.fillStyle = '#FFF';
+        
+        offCtx.translate(gridDrawX, gridDrawY);
+        offCtx.scale(gridFitScale, gridFitScale);
+        offCtx.fill(logoLayout.path2D);
+
+        const imgData = offCtx.getImageData(0, 0, cols, rows).data;
+        logoMap = new Uint8Array(cols * rows);
+        
+        for (let i = 0; i < cols * rows; i++) {
+            logoMap[i] = imgData[i * 4];
+        }
+    }
+    
+    function draw() {
+        if (!isPaused) {
+            frameCount++;
+        }
+        
+        const currentFrame = frameCount % loopDuration;
+
+        // Cycle Randomization
+        if (currentFrame === 0 && frameCount > 10) {
+            textString = generateRandomString();
+            textLen = textString.length;
+        }
+
+        // Decoding
+        let decodeProgress = 0;
+        if (currentFrame > startDecodingFrame) {
+            decodeProgress = (currentFrame - startDecodingFrame) / decodingDuration;
+            if (decodeProgress > 1) decodeProgress = 1;
+        }
+        
+        // Face
+        let faceMix = 0;
+        if (currentFrame > startFaceFrame) {
+            const faceRelFrame = currentFrame - startFaceFrame;
+            if (faceRelFrame < faceFadeDuration) {
+                faceMix = smoothstep(0, faceFadeDuration, faceRelFrame);
+            } else {
+                faceMix = 1.0;
+            }
+        }
+
+        // Logo Transition
+        let globalMix = 0; 
+        let targetRadius = -200;
+        let radialMask = 0;
+        
+        if (currentFrame > startLogoTransition) {
+            let transitionProgress = (currentFrame - startLogoTransition) / transitionDuration;
+            if (transitionProgress > 1) transitionProgress = 1;
+            
+            globalMix = 1.0; 
+            const easedP = transitionProgress < 0.5 
+                ? 4 * transitionProgress * transitionProgress * transitionProgress 
+                : 1 - Math.pow(-2 * transitionProgress + 2, 3) / 2;
+            targetRadius = easedP * (maxDistFromCenter * 1.5);
+        }
+
+        // Reset
+        if (currentFrame > startResetFrame) {
+            const resetP = (currentFrame - startResetFrame) / resetDuration;
+            const clampedResetP = Math.min(1, Math.max(0, resetP));
+            globalMix *= (1.0 - clampedResetP);
+            faceMix *= (1.0 - clampedResetP);
+            decodeProgress *= (1.0 - clampedResetP);
+        }
+
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, width, height);
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        for (let y = 0; y < rows; y++) {
+            const py = y * rowSpacing;
+            const dy = py - centerY;
+            const dy2 = dy * dy; 
+            const rowOffset = y * cols;
+
+            for (let x = 0; x < cols; x++) {
+                let px = x * colSpacing;
+                const dx = px - centerX;
+                
+                // Magnetic hover effect - always active
+                let offsetX = 0;
+                let offsetY = 0;
+                const distToMouse = Math.sqrt((px - mouseX) * (px - mouseX) + (py - mouseY) * (py - mouseY));
+                if (distToMouse > 0 && distToMouse < magneticRadius) {
+                    // Calculate repulsion vector
+                    const repulsionX = (px - mouseX) / distToMouse;
+                    const repulsionY = (py - mouseY) / distToMouse;
+                    const repulsionStrength = (magneticRadius - distToMouse) * magneticStrength;
+                    offsetX = repulsionX * repulsionStrength;
+                    offsetY = repulsionY * repulsionStrength;
+                }
+                
+                // Apply offset to drawing position
+                const drawX = px + offsetX;
+                const drawY = py + offsetY;
+                
+                const dist = Math.sqrt(dx * dx + dy2);
+                const rawWave = Math.sin(dist * waveFrequency - time);
+                const waveIntensity = (rawWave + 1) / 2;
+
+                // --- 1. FACE ---
+                let currentIntensity = waveIntensity;
+                if (faceMix > 0) {
+                    const faceVal = getFaceIntensity(dx, dy);
+                    const blendVal = Math.min(1.0, (waveIntensity * 0.15) + faceVal);
+                    currentIntensity = lerp(waveIntensity, blendVal, faceMix);
+                }
+
+                // --- 2. LOGO WITH BEVEL ---
+                const logoVal = logoMap[x + rowOffset]; // 0 to 255
+                const logoNorm = logoVal / 255.0;       // 0.0 to 1.0
+                
+                let logoStateIntensity;
+                
+                if (logoNorm > 0.05) { 
+                    const bevel = logoNorm; 
+                    logoStateIntensity = (bevel * 0.85) + (waveIntensity * 0.15 * bevel);
+                } else {
+                    logoStateIntensity = waveIntensity * 0.15;
+                }
+
+                // Liquid Mask
+                radialMask = 0;
+                if (globalMix > 0) {
+                     const angle = Math.atan2(dy, dx);
+                     const turbulence = Math.sin(angle * 3 + time * 1.5) * 60; 
+                     const waveLink = rawWave * 40; 
+                     const maskThreshold = targetRadius + turbulence + waveLink;
+                     radialMask = smoothstep(maskThreshold, maskThreshold - 350, dist);
+                     radialMask *= globalMix;
+                }
+
+                let finalIntensity = lerp(currentIntensity, logoStateIntensity, radialMask);
+                
+                // Text
+                const globalIndex = (x + rowOffset);
+                const charIndex = globalIndex % textLen;
+                const targetChar = textString[charIndex];
+                
+                let charToDraw;
+                if (decodeProgress >= 1) {
+                    charToDraw = targetChar;
+                } else {
+                    if (Math.random() < decodeProgress) {
+                        charToDraw = targetChar;
+                    } else {
+                        charToDraw = Math.random() > 0.5 ? "0" : "1";
+                    }
+                }
+
+                const currentSize = minFontSize + (maxFontSize - minFontSize) * finalIntensity;
+                
+                let brightness;
+                if (radialMask > 0.8) {
+                     brightness = Math.floor(40 + (215 * finalIntensity));
+                } else if (faceMix > 0.5) {
+                     brightness = Math.floor(80 + (175 * finalIntensity));
+                } else {
+                     brightness = Math.floor(100 + (155 * finalIntensity));
+                }
+
+                ctx.fillStyle = `rgb(${brightness}, ${brightness}, ${brightness})`;
+                
+                const sizeInt = Math.floor(currentSize);
+                if (sizeInt > 0) {
+                    const fontKey = `${sizeInt}px`;
+                    if (!fontCache.has(fontKey)) {
+                        fontCache.set(fontKey, `bold ${sizeInt}px ${fontName}`);
+                    }
+                    ctx.font = fontCache.get(fontKey);
+                    ctx.fillText(charToDraw, drawX, drawY);
+                }
+            }
+        }
+
+        if (!isPaused) {
+            time += waveSpeed;
+        }
+        
+        // FPS calculation
+        fpsFrameCount++;
+        const now = performance.now();
+        if (now - lastFpsTime >= 1000) {
+            currentFps = fpsFrameCount;
+            fpsFrameCount = 0;
+            lastFpsTime = now;
+            document.getElementById('fpsDisplay').textContent = `FPS: ${currentFps}`;
+        }
+        
+        // Draw custom cursor (white circle)
+        if (mouseX >= 0 && mouseY >= 0 && mouseX < width && mouseY < height) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(mouseX, mouseY, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        requestAnimationFrame(draw);
+    }
+
+    // Pause button functionality
+    const pauseBtn = document.getElementById('pauseBtn');
+    const togglePause = () => {
+        isPaused = !isPaused;
+        pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
+    };
+    pauseBtn.addEventListener('click', togglePause);
+    
+    // Keyboard shortcut for pause (spacebar)
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && e.target === document.body) {
+            e.preventDefault();
+            togglePause();
+        }
+    });
+
+    // Fullscreen functionality
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log('Error attempting to enable fullscreen:', err);
+            });
+            fullscreenBtn.textContent = 'Exit Fullscreen';
+        } else {
+            document.exitFullscreen();
+            fullscreenBtn.textContent = 'Fullscreen';
+        }
+    });
+    
+    // Update fullscreen button text on change
+    document.addEventListener('fullscreenchange', () => {
+        fullscreenBtn.textContent = document.fullscreenElement ? 'Exit Fullscreen' : 'Fullscreen';
+    });
+
+    // Mouse tracking for magnetic hover effect
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = e.clientY - rect.top;
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+        // Reset mouse position when leaving canvas to avoid stuck effects
+        mouseX = -10000;
+        mouseY = -10000;
+    });
+
+    window.addEventListener('resize', resize);
+    resize();
+    draw();
+
+</script>
+
+</body>
+</html>
