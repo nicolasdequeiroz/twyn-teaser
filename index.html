@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TWYN - Teaser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Animated background */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        .logo {
+            font-size: 48px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            animation: fadeIn 1s ease-in;
+        }
+        
+        .subtitle {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 60px;
+            letter-spacing: 2px;
+            animation: fadeIn 1.2s ease-in;
+        }
+        
+        .menu {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            animation: fadeIn 1.4s ease-in;
+        }
+        
+        .menu-item {
+            position: relative;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px 40px;
+            text-decoration: none;
+            color: #fff;
+            font-size: 18px;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+        
+        .menu-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .menu-item:hover::before {
+            left: 100%;
+        }
+        
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateX(10px);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+        }
+        
+        .menu-item:active {
+            transform: translateX(5px) scale(0.98);
+        }
+        
+        .menu-item-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 20px;
+        }
+        
+        .menu-item-description {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 1px;
+        }
+        
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            text-align: center;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 1px;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 32px;
+                letter-spacing: 4px;
+            }
+            
+            .menu-item {
+                padding: 20px 30px;
+                font-size: 16px;
+            }
+            
+            .menu-item-title {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="logo">TWYN</h1>
+        <p class="subtitle">The Code Comes to Life</p>
+        
+        <nav class="menu">
+            <a href="kinetic-type-wave.html" class="menu-item">
+                <div class="menu-item-title">Kinetic Type Wave</div>
+                <div class="menu-item-description">Transforming binary data into living identity</div>
+            </a>
+            
+            <a href="3d-visualizer.html" class="menu-item">
+                <div class="menu-item-title">3D Visualizer</div>
+                <div class="menu-item-description">Camera control and 3D visualization</div>
+            </a>
+        </nav>
+    </div>
+    
+    <div class="footer">
+        <p>© 2025, TWYN</p>
+    </div>
+</body>
+</html>
+
