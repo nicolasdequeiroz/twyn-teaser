@@ -9779,7 +9779,9 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                 p.push();
                 p.translate(p.width/2, p.height/2);
                 
-                const text = "Data becomes identity. Identity rewrites the code. The code becomes human.";
+                const text = "Structure becomes presence. Presence anchors proof. Proof reveals life.";
+                // Debug: log text to verify it's being used
+                if (p.frameCount % 300 === 0) console.log("Text Ring:", text);
                 const radius = p.min(p.width, p.height) * 0.42;
                 const fontSize = 14;
                 p.textSize(fontSize);
@@ -9792,10 +9794,9 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                 const totalArc = (chars.length * charSpacing) / radius;
                 const startAngle = -totalArc / 2 + textRingAngle;
                 
-                // Optimize: Render fewer characters for better performance (every 2nd character)
-                let skipFactor = 2;
+                // Render all characters for full text visibility
                 chars.forEach((char, i) => {
-                    if (char === ' ' || i % skipFactor !== 0) return; // Skip spaces and every other char
+                    if (char === ' ') return; // Skip spaces only
                     
                     const angle = startAngle + (i * charSpacing) / radius;
                     const x = radius * Math.cos(angle);
