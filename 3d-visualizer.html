@@ -9337,31 +9337,8 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
             let easterEggReforming = false;
             let easterEggReformTimer = 0;
             let easterEggReformDuration = 30; // 0.5 seconds to reform
-            let easterEggShapeMode = false; // Toggle between text and SVG shapes
+            let easterEggCyanMode = false; // Toggle between purple and cyan
             let nosePosition = null;
-            
-            // SVG paths for easter egg logo (from viewBox 0 0 400 457)
-            const svgPaths = [
-                // Path 0: Cyan left curve
-                "M57.0445 256.708H0C0 366.974 89.3889 456.363 199.656 456.363V399.319C120.894 399.319 57.0445 335.47 57.0445 256.708Z",
-                // Path 1: Cyan right curve
-                "M342.267 256.708H399.312C399.312 366.974 309.923 456.363 199.656 456.363V399.319C278.418 399.319 342.267 335.47 342.267 256.708Z",
-                // Path 2: White main shape
-                "M159.725 0H102.68V256.7C102.68 310.258 146.098 353.676 199.656 353.676C253.214 353.676 296.631 310.258 296.631 256.7V216.769H239.587V256.7C239.587 278.754 221.709 296.631 199.656 296.631C177.602 296.631 159.725 278.754 159.725 256.7V114.089H268.109V57.0445H159.725V0Z",
-                // Path 3: White circle
-                "M0 85.5667C0 69.8143 12.7698 57.0445 28.5222 57.0445C44.2746 57.0445 57.0445 69.8143 57.0445 85.5667C57.0445 101.319 44.2746 114.089 28.5222 114.089C12.7698 114.089 0 101.319 0 85.5667Z"
-            ];
-            
-            // Path colors (0-1: cyan, 2-3: white)
-            const svgPathColors = [
-                [71, 208, 208], // Cyan
-                [71, 208, 208], // Cyan
-                [255, 255, 255], // White
-                [255, 255, 255]  // White
-            ];
-            
-            // Store path index for each target (used to determine particle color)
-            let targetPathIndices = [];
 
             p.setup = () => {
                 let c = document.getElementById('canvas-wrapper');
@@ -9631,12 +9608,8 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                         if (!easterEggReforming) {
                             easterEggReforming = true;
                             easterEggReformTimer = 0;
-                            // Generate SVG logo targets instead of mesh
-                            if (easterEggShapeMode) {
-                                generateSVGLogoTargets();
-                            } else {
-                                generateMeshTargets();
-                            }
+                            // Regenerate targets to reform the mesh immediately
+                            generateMeshTargets();
                         }
                         
                         // End explosion phase after short duration
@@ -9661,51 +9634,24 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                     particles.forEach((pt, idx) => {
                         // During easter egg: combine vortex with seeking (magnetization starts immediately)
                         if (easterEggActive) {
+                            // Apply vortex but also start seeking targets
+                            pt.vortex();
                             if (pt.target && easterEggReforming) {
                                 let t = pt.target.copy();
+                                // Optimize: Calculate noise less frequently during easter egg
+                                if (!shouldSkipFrame) {
+                                    let n = p.noise(t.x * 0.05, t.y * 0.05, noiseOffset);
+                                    t.mult(1.0 + n * 0.015);
+                                }
                                 
-                                // If in SVG logo mode, use 2D only (no 3D transformations, no vortex)
-                                if (easterEggShapeMode) {
-                                    // 2D mode: no camera transforms, no 3D rotation, no vortex, just hover effect
-                                    // Gradually bring Z to 0 for smooth transition
-                                    pt.pos.z = p.lerp(pt.pos.z, 0, 0.1);
-                                    pt.vel.z = p.lerp(pt.vel.z, 0, 0.2);
-                                    
-                                    // Add hover effect similar to phase 03
-                                    if (isDesktop) {
-                                        let d = p.dist(t.x, t.y, mouse.x, mouse.y);
-                                        if (d < 100) {
-                                            let rep = p5.Vector.sub(t, mouse);
-                                            rep.setMag((100 - d) * 0.1);
-                                            t.add(rep);
-                                        }
-                                    }
-                                    // Force Z to 0 for 2D
-                                    t.z = 0;
-                                    pt.seek(t, true, 5.0);
-                                } else {
-                                    // 3D mode: use vortex and camera transforms (for mesh)
-                                    pt.vortex();
-                                    // Optimize: Calculate noise less frequently during easter egg
-                                    if (!shouldSkipFrame) {
-                                        let n = p.noise(t.x * 0.05, t.y * 0.05, noiseOffset);
-                                        t.mult(1.0 + n * 0.015);
-                                    }
-                                    
-                                    // Apply Manual Camera Transform (Rotation + Zoom)
-                                    let transformed = applyCamera(t, camRotX, camRotY, camRotZ, camZoom);
-                                    
-                                    // Apply Mouse Interaction
-                                    let rotatedT = rotate3D(transformed, faceRotation.x, faceRotation.y);
-                                    
-                                    // Strong magnetization even during vortex (5x force)
-                                    pt.seek(rotatedT, true, 5.0);
-                                }
-                            } else {
-                                // No target yet, just apply vortex (only for 3D mode)
-                                if (!easterEggShapeMode) {
-                                    pt.vortex();
-                                }
+                                // Apply Manual Camera Transform (Rotation + Zoom)
+                                let transformed = applyCamera(t, camRotX, camRotY, camRotZ, camZoom);
+                                
+                                // Apply Mouse Interaction
+                                let rotatedT = rotate3D(transformed, faceRotation.x, faceRotation.y);
+                                
+                                // Strong magnetization even during vortex (5x force)
+                                pt.seek(rotatedT, true, 5.0);
                             }
                         } else if (isSwirling) {
                             pt.vortex();
@@ -9713,72 +9659,49 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                             if (pt.target) {
                                 let t = pt.target.copy();
                                 
-                                // If in SVG logo mode (after easter egg), use 2D only
-                                if (easterEggShapeMode && isHuman) {
-                                    // 2D mode: no 3D transformations, just hover effect
-                                    // Gradually bring Z to 0 for smooth transition
-                                    pt.pos.z = p.lerp(pt.pos.z, 0, 0.1);
-                                    pt.vel.z = p.lerp(pt.vel.z, 0, 0.2);
+                                // Smooth transition: interpolate between old and new targets
+                                if (isTransitioning && idx < previousTargets.length && previousTargets[idx]) {
+                                    let transitionT = transitionProgress / transitionDuration;
+                                    // Ease-in-out curve for smoother transition
+                                    let easedT = transitionT < 0.5 
+                                        ? 2 * transitionT * transitionT 
+                                        : 1 - Math.pow(-2 * transitionT + 2, 2) / 2;
                                     
-                                    // Add hover effect similar to phase 03
-                                    if (isDesktop) {
-                                        let d = p.dist(t.x, t.y, mouse.x, mouse.y);
-                                        if (d < 100) {
-                                            let rep = p5.Vector.sub(t, mouse);
-                                            rep.setMag((100 - d) * 0.1);
-                                            t.add(rep);
-                                        }
-                                    }
-                                    // Force Z to 0 for 2D
-                                    t.z = 0;
-                                    pt.seek(t, true);
+                                    let oldTarget = previousTargets[idx];
+                                    let newTarget = t;
+                                    
+                                    // Interpolate between old and new target positions
+                                    t = p.createVector(
+                                        p.lerp(oldTarget.x, newTarget.x, easedT),
+                                        p.lerp(oldTarget.y, newTarget.y, easedT),
+                                        p.lerp(oldTarget.z, newTarget.z, easedT)
+                                    );
+                                }
+                                
+                                // Optimize: Calculate noise less frequently (every other frame) for better performance
+                                if (!shouldSkipFrame) {
+                                    let n = p.noise(t.x * 0.05, t.y * 0.05, noiseOffset);
+                                    t.mult(1.0 + n * 0.015);
+                                }
+                                
+                                // Apply Manual Camera Transform (Rotation + Zoom)
+                                let transformed = applyCamera(t, camRotX, camRotY, camRotZ, camZoom);
+                                
+                                // Apply Mouse Interaction
+                                let rotatedT = rotate3D(transformed, faceRotation.x, faceRotation.y);
+                                
+                                // Faster seek during reform phase or transition
+                                if (easterEggReforming) {
+                                    pt.seek(rotatedT, true, 4.0); // 4x faster force
+                                } else if (isTransitioning) {
+                                    // Slightly faster during transition for smoother movement
+                                    pt.seek(rotatedT, true, 1.5); 
                                 } else {
-                                    // 3D mode: normal mesh behavior
-                                    // Smooth transition: interpolate between old and new targets
-                                    if (isTransitioning && idx < previousTargets.length && previousTargets[idx]) {
-                                        let transitionT = transitionProgress / transitionDuration;
-                                        // Ease-in-out curve for smoother transition
-                                        let easedT = transitionT < 0.5 
-                                            ? 2 * transitionT * transitionT 
-                                            : 1 - Math.pow(-2 * transitionT + 2, 2) / 2;
-                                        
-                                        let oldTarget = previousTargets[idx];
-                                        let newTarget = t;
-                                        
-                                        // Interpolate between old and new target positions
-                                        t = p.createVector(
-                                            p.lerp(oldTarget.x, newTarget.x, easedT),
-                                            p.lerp(oldTarget.y, newTarget.y, easedT),
-                                            p.lerp(oldTarget.z, newTarget.z, easedT)
-                                        );
-                                    }
-                                    
-                                    // Optimize: Calculate noise less frequently (every other frame) for better performance
-                                    if (!shouldSkipFrame) {
-                                        let n = p.noise(t.x * 0.05, t.y * 0.05, noiseOffset);
-                                        t.mult(1.0 + n * 0.015);
-                                    }
-                                    
-                                    // Apply Manual Camera Transform (Rotation + Zoom)
-                                    let transformed = applyCamera(t, camRotX, camRotY, camRotZ, camZoom);
-                                    
-                                    // Apply Mouse Interaction
-                                    let rotatedT = rotate3D(transformed, faceRotation.x, faceRotation.y);
-                                    
-                                    // Faster seek during reform phase or transition
-                                    if (easterEggReforming) {
-                                        pt.seek(rotatedT, true, 4.0); // 4x faster force
-                                    } else if (isTransitioning) {
-                                        // Slightly faster during transition for smoother movement
-                                        pt.seek(rotatedT, true, 1.5); 
-                                    } else {
-                                        pt.seek(rotatedT, true); 
-                                    }
+                                    pt.seek(rotatedT, true); 
                                 }
                             }
                             // Optimize: Apply behaviors less frequently on non-desktop or skip frames
-                            // Only apply 3D behaviors if not in SVG logo mode
-                            if (isDesktop && !shouldSkipFrame && !(easterEggShapeMode && isHuman)) {
+                            if (isDesktop && !shouldSkipFrame) {
                                 pt.behaviors(mouse, true);
                             } 
                         }
@@ -9808,15 +9731,15 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                     let distance = p.dist(clickX, clickY, screenX, screenY);
                     
                     if (distance < 50) {
-                        // Toggle easter egg and shape mode
+                        // Toggle easter egg and color mode
                         if (easterEggActive) {
-                            // If already active, just toggle shape mode
-                            easterEggShapeMode = !easterEggShapeMode;
+                            // If already active, just toggle color
+                            easterEggCyanMode = !easterEggCyanMode;
                         } else {
                             // Activate easter egg!
                             easterEggActive = true;
                             easterEggTimer = 0;
-                            easterEggShapeMode = true; // Enable shapes on first click
+                            easterEggCyanMode = !easterEggCyanMode; // Toggle color on first click
                         }
                     }
                 }
@@ -10185,237 +10108,6 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
             }
 
             // --- HYBRID MESH SAMPLING ---
-            function generateSVGLogoTargets() {
-                targets = [];
-                targetPathIndices = [];
-                
-                // Calculate logo size - make it appropriately sized with breathing room
-                let minDimension = p.min(p.width, p.height);
-                // Logo should be about 65% of the smaller dimension
-                let logoScale = minDimension * 0.65 / 400; // Original SVG is 400 wide
-                
-                // Center position - ensure it's perfectly centered
-                let centerX = p.width / 2;
-                let centerY = p.height / 2;
-                
-                // Create a single combined graphics (most efficient)
-                let combinedPg = p.createGraphics(p.width, p.height);
-                combinedPg.pixelDensity(1);
-                combinedPg.background(0);
-                combinedPg.noStroke();
-                
-                // Draw all paths with skin first, then original
-                let skinScale = 1.1; // 10% larger for skin
-                svgPaths.forEach((pathData, pathIndex) => {
-                    let pathColor = svgPathColors[pathIndex];
-                    
-                    // Draw skin
-                    combinedPg.fill(pathColor[0] * 0.8, pathColor[1] * 0.8, pathColor[2] * 0.8);
-                    combinedPg.push();
-                    combinedPg.translate(centerX, centerY);
-                    combinedPg.scale(logoScale * skinScale);
-                    combinedPg.translate(-200, -228.5);
-                    drawSVGPathToGraphics(combinedPg, pathData);
-                    combinedPg.pop();
-                    
-                    // Draw original
-                    combinedPg.fill(pathColor[0], pathColor[1], pathColor[2]);
-                    combinedPg.push();
-                    combinedPg.translate(centerX, centerY);
-                    combinedPg.scale(logoScale);
-                    combinedPg.translate(-200, -228.5);
-                    drawSVGPathToGraphics(combinedPg, pathData);
-                    combinedPg.pop();
-                });
-                
-                combinedPg.loadPixels();
-                
-                // Sample pixels with large spacing for performance
-                let step = 10; // Very large step for performance
-                let pixelThreshold = 30;
-                const MAX_SVG_TARGETS = 2500; // Lower limit
-                let targetCount = 0;
-                
-                // Simple sampling - assign to path based on color
-                for(let y=0; y<p.height; y+=step) {
-                    for(let x=0; x<p.width; x+=step) {
-                        if (targetCount >= MAX_SVG_TARGETS) break;
-                        
-                        let idx = (x + y * p.width) * 4;
-                        let r = combinedPg.pixels[idx];
-                        let g = combinedPg.pixels[idx + 1];
-                        let b = combinedPg.pixels[idx + 2];
-                        
-                        if(r > pixelThreshold || g > pixelThreshold || b > pixelThreshold) {
-                            // Find closest path color
-                            let foundPath = 0;
-                            let minDist = Infinity;
-                            for(let i = 0; i < svgPathColors.length; i++) {
-                                let pc = svgPathColors[i];
-                                let dist = Math.abs(r - pc[0]) + Math.abs(g - pc[1]) + Math.abs(b - pc[2]);
-                                if (dist < minDist) {
-                                    minDist = dist;
-                                    foundPath = i;
-                                }
-                            }
-                            
-                            targets.push(p.createVector(x - p.width/2, y - p.height/2, 0));
-                            targetPathIndices.push(foundPath);
-                            targetCount++;
-                        }
-                    }
-                    if (targetCount >= MAX_SVG_TARGETS) break;
-                }
-                
-                combinedPg.remove();
-                
-                // Assign targets
-                let limit = Math.min(2500, Math.max(targets.length, particles.length));
-                
-                particles.forEach(pt => {
-                    pt.vel.mult(0.5);
-                    pt.acc.mult(0);
-                });
-                
-                assignTargets(limit);
-            }
-            
-            // Helper function to draw SVG path to a graphics object
-            function drawSVGPathToGraphics(graphics, pathData) {
-                const svgCenterX = 200;
-                const svgCenterY = 228.5;
-                
-                graphics.beginShape();
-                // Better parsing that handles negative numbers and decimals correctly
-                const pathStr = pathData.trim();
-                const commands = [];
-                let i = 0;
-                
-                while (i < pathStr.length) {
-                    if (pathStr[i].match(/[MmLlHhVvCcSsQqTtZzAa]/)) {
-                        const cmd = pathStr[i];
-                        i++;
-                        let coords = '';
-                        // Collect all numbers until next command
-                        while (i < pathStr.length && !pathStr[i].match(/[MmLlHhVvCcSsQqTtZzAa]/)) {
-                            coords += pathStr[i];
-                            i++;
-                        }
-                        commands.push({ type: cmd, coords: coords.trim() });
-                    } else {
-                        i++;
-                    }
-                }
-                
-                // Debug: log if no commands found
-                if (commands.length === 0) {
-                    console.warn('No SVG commands parsed from:', pathData);
-                    graphics.endShape();
-                    return;
-                }
-                
-                let currentX = 0, currentY = 0;
-                let startX = 0, startY = 0;
-                
-                for (let cmd of commands) {
-                    const type = cmd.type;
-                    // Better coordinate parsing - handle negative numbers and scientific notation
-                    // First, ensure spaces between numbers and signs
-                    let coordsStr = cmd.coords
-                        .replace(/([0-9])([+-])/g, '$1 $2') // Add space before + or - that follows a digit
-                        .replace(/([+-])([0-9])/g, '$1$2') // Ensure no space after sign
-                        .replace(/([eE])([+-])/g, '$1$2'); // Keep scientific notation together
-                    
-                    const coords = coordsStr
-                        .split(/[\s,]+/)
-                        .map(s => {
-                            let num = parseFloat(s);
-                            return isNaN(num) ? null : num;
-                        })
-                        .filter(n => n !== null);
-                    
-                    if (type === 'M' || type === 'm') {
-                        if (coords.length >= 2) {
-                            if (type === 'M') {
-                                currentX = coords[0] - svgCenterX;
-                                currentY = coords[1] - svgCenterY;
-                            } else {
-                                currentX += coords[0];
-                                currentY += coords[1];
-                            }
-                            startX = currentX;
-                            startY = currentY;
-                            graphics.vertex(currentX, currentY);
-                        }
-                    } else if (type === 'L' || type === 'l') {
-                        for (let i = 0; i < coords.length; i += 2) {
-                            if (i + 1 < coords.length) {
-                                if (type === 'L') {
-                                    currentX = coords[i] - svgCenterX;
-                                    currentY = coords[i + 1] - svgCenterY;
-                                } else {
-                                    currentX += coords[i];
-                                    currentY += coords[i + 1];
-                                }
-                                graphics.vertex(currentX, currentY);
-                            }
-                        }
-                    } else if (type === 'H' || type === 'h') {
-                        for (let i = 0; i < coords.length; i++) {
-                            if (type === 'H') {
-                                currentX = coords[i] - svgCenterX;
-                            } else {
-                                currentX += coords[i];
-                            }
-                            graphics.vertex(currentX, currentY);
-                        }
-                    } else if (type === 'V' || type === 'v') {
-                        for (let i = 0; i < coords.length; i++) {
-                            if (type === 'V') {
-                                currentY = coords[i] - svgCenterY;
-                            } else {
-                                currentY += coords[i];
-                            }
-                            graphics.vertex(currentX, currentY);
-                        }
-                    } else if (type === 'C' || type === 'c') {
-                        for (let i = 0; i < coords.length; i += 6) {
-                            if (i + 5 < coords.length) {
-                                let x1, y1, x2, y2, x, y;
-                                if (type === 'C') {
-                                    x1 = coords[i] - svgCenterX;
-                                    y1 = coords[i + 1] - svgCenterY;
-                                    x2 = coords[i + 2] - svgCenterX;
-                                    y2 = coords[i + 3] - svgCenterY;
-                                    x = coords[i + 4] - svgCenterX;
-                                    y = coords[i + 5] - svgCenterY;
-                                } else {
-                                    x1 = currentX + coords[i];
-                                    y1 = currentY + coords[i + 1];
-                                    x2 = currentX + coords[i + 2];
-                                    y2 = currentY + coords[i + 3];
-                                    x = currentX + coords[i + 4];
-                                    y = currentY + coords[i + 5];
-                                }
-                                // Increase steps for smoother curves
-                                const steps = 40;
-                                for (let t = 0; t <= 1; t += 1/steps) {
-                                    const mt = 1 - t;
-                                    const bx = mt*mt*mt*currentX + 3*mt*mt*t*x1 + 3*mt*t*t*x2 + t*t*t*x;
-                                    const by = mt*mt*mt*currentY + 3*mt*mt*t*y1 + 3*mt*t*t*y2 + t*t*t*y;
-                                    graphics.vertex(bx, by);
-                                }
-                                currentX = x;
-                                currentY = y;
-                            }
-                        }
-                    } else if (type === 'Z' || type === 'z') {
-                        graphics.vertex(startX, startY);
-                    }
-                }
-                graphics.endShape(graphics.CLOSE);
-            }
-
             function generateMeshTargets() {
                 targets = [];
                 // Calculate total points based on screen size for better readability on smaller screens
@@ -10546,15 +10238,8 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                 particles.forEach((pt, i) => {
                     if (i < targets.length) {
                         pt.target = targets[i];
-                        // Assign path index if we're in SVG logo mode
-                        if (targetPathIndices.length > 0 && i < targetPathIndices.length) {
-                            pt.pathIndex = targetPathIndices[i];
-                        } else {
-                            pt.pathIndex = -1; // No path assigned
-                        }
                     } else {
                         pt.target = null;
-                        pt.pathIndex = -1;
                     }
                 });
                 
@@ -10674,134 +10359,6 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                 }
             }
 
-            // Function to parse and draw SVG path
-            function drawSVGPath(pathData, scale = 1.0) {
-                // SVG viewBox is 0 0 400 457, center is at (200, 228.5)
-                // We'll center the path at (0, 0) and scale it
-                const svgCenterX = 200;
-                const svgCenterY = 228.5;
-                
-                // Parse path data - handle commands that can be lowercase or uppercase
-                const pathStr = pathData.replace(/\s+/g, ' ').trim();
-                const commands = [];
-                let i = 0;
-                
-                while (i < pathStr.length) {
-                    // Find command letter
-                    if (pathStr[i].match(/[MmLlHhVvCcSsQqTtZzAa]/)) {
-                        const cmd = pathStr[i];
-                        i++;
-                        let coords = '';
-                        // Collect all numbers until next command
-                        while (i < pathStr.length && !pathStr[i].match(/[MmLlHhVvCcSsQqTtZzAa]/)) {
-                            coords += pathStr[i];
-                            i++;
-                        }
-                        commands.push({ type: cmd, coords: coords.trim() });
-                    } else {
-                        i++;
-                    }
-                }
-                
-                if (commands.length === 0) return;
-                
-                p.beginShape();
-                let currentX = 0, currentY = 0;
-                let startX = 0, startY = 0;
-                
-                for (let cmd of commands) {
-                    const type = cmd.type;
-                    // Parse coordinates - handle negative numbers and decimals
-                    const coords = cmd.coords.split(/[\s,]+/).map(s => parseFloat(s)).filter(n => !isNaN(n));
-                    
-                    if (type === 'M' || type === 'm') {
-                        // Move to
-                        if (coords.length >= 2) {
-                            if (type === 'M') {
-                                currentX = (coords[0] - svgCenterX) * scale;
-                                currentY = (coords[1] - svgCenterY) * scale;
-                            } else {
-                                currentX += coords[0] * scale;
-                                currentY += coords[1] * scale;
-                            }
-                            startX = currentX;
-                            startY = currentY;
-                            p.vertex(currentX, currentY);
-                        }
-                    } else if (type === 'L' || type === 'l') {
-                        // Line to
-                        for (let i = 0; i < coords.length; i += 2) {
-                            if (i + 1 < coords.length) {
-                                if (type === 'L') {
-                                    currentX = (coords[i] - svgCenterX) * scale;
-                                    currentY = (coords[i + 1] - svgCenterY) * scale;
-                                } else {
-                                    currentX += coords[i] * scale;
-                                    currentY += coords[i + 1] * scale;
-                                }
-                                p.vertex(currentX, currentY);
-                            }
-                        }
-                    } else if (type === 'H' || type === 'h') {
-                        // Horizontal line
-                        for (let i = 0; i < coords.length; i++) {
-                            if (type === 'H') {
-                                currentX = (coords[i] - svgCenterX) * scale;
-                            } else {
-                                currentX += coords[i] * scale;
-                            }
-                            p.vertex(currentX, currentY);
-                        }
-                    } else if (type === 'V' || type === 'v') {
-                        // Vertical line
-                        for (let i = 0; i < coords.length; i++) {
-                            if (type === 'V') {
-                                currentY = (coords[i] - svgCenterY) * scale;
-                            } else {
-                                currentY += coords[i] * scale;
-                            }
-                            p.vertex(currentX, currentY);
-                        }
-                    } else if (type === 'C' || type === 'c') {
-                        // Cubic Bezier curve
-                        for (let i = 0; i < coords.length; i += 6) {
-                            if (i + 5 < coords.length) {
-                                let x1, y1, x2, y2, x, y;
-                                if (type === 'C') {
-                                    x1 = (coords[i] - svgCenterX) * scale;
-                                    y1 = (coords[i + 1] - svgCenterY) * scale;
-                                    x2 = (coords[i + 2] - svgCenterX) * scale;
-                                    y2 = (coords[i + 3] - svgCenterY) * scale;
-                                    x = (coords[i + 4] - svgCenterX) * scale;
-                                    y = (coords[i + 5] - svgCenterY) * scale;
-                                } else {
-                                    x1 = currentX + coords[i] * scale;
-                                    y1 = currentY + coords[i + 1] * scale;
-                                    x2 = currentX + coords[i + 2] * scale;
-                                    y2 = currentY + coords[i + 3] * scale;
-                                    x = currentX + coords[i + 4] * scale;
-                                    y = currentY + coords[i + 5] * scale;
-                                }
-                                // Approximate bezier with multiple vertices for smooth curve
-                                const steps = 20;
-                                for (let t = 0; t <= 1; t += 1/steps) {
-                                    const mt = 1 - t;
-                                    const bx = mt*mt*mt*currentX + 3*mt*mt*t*x1 + 3*mt*t*t*x2 + t*t*t*x;
-                                    const by = mt*mt*mt*currentY + 3*mt*mt*t*y1 + 3*mt*t*t*y2 + t*t*t*y;
-                                    p.vertex(bx, by);
-                                }
-                                currentX = x;
-                                currentY = y;
-                            }
-                        }
-                    } else if (type === 'Z' || type === 'z') {
-                        // Close path
-                        p.vertex(startX, startY);
-                    }
-                }
-                p.endShape(p.CLOSE);
-            }
-
             class Particle {
                 constructor(x, y, z) {
                     this.pos = p.createVector(x, y, z);
@@ -10816,8 +10373,6 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                     this.colorSeed = p.noise(x * 0.1, y * 0.1, z * 0.1);
                     // Animation phase for color pulsing
                     this.colorPhase = p.random(0, p.TWO_PI);
-                    // Path index for SVG logo easter egg (-1 means no path assigned)
-                    this.pathIndex = -1;
                 }
                 behaviors(mouse, is3D) {
                     if (!this.target) return;
@@ -10856,17 +10411,11 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                     this.vel.add(this.acc);
                     this.pos.add(this.vel);
                     this.acc.mult(0);
-                    this.vel.mult(0.85);
-                    // Gradually bring Z to 0 when in SVG logo mode (has pathIndex assigned)
-                    if (easterEggShapeMode && this.pathIndex !== undefined && this.pathIndex >= 0) {
-                        this.pos.z = p.lerp(this.pos.z, 0, 0.15);
-                        this.vel.z = p.lerp(this.vel.z, 0, 0.25);
-                    }
+                    this.vel.mult(0.85); 
                     if(p.frameCount % 20 === 0) this.val = p.random() > 0.5 ? "1" : "0";
                 }
                 show(isHuman, expansionProgress = 1) {
-                    // If in SVG logo mode, force 2D (Z = 0)
-                    let z = (easterEggShapeMode && isHuman) ? 0 : this.pos.z;
+                    let z = this.pos.z;
                     // Fix Z logic for human depth
                     let depthScale = (z + 200) / 400; 
                     let scale = p.map(depthScale, 0, 1, 0.4, 1.8);
@@ -10882,37 +10431,56 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                         alpha = alpha * opacityMultiplier;
                     }
                     
-                    // In SVG logo mode, use consistent scale and alpha
-                    if (easterEggShapeMode && isHuman) {
-                        scale = 1.0;
-                        alpha = 255;
-                    }
-                    
                     p.push();
                     p.translate(this.pos.x + p.width/2, this.pos.y + p.height/2);
                     p.scale(scale);
                     
-                    // Check if we're in SVG logo mode (easter egg active with shape mode)
-                    let useSVGColors = easterEggShapeMode && isHuman && this.pathIndex !== undefined && this.pathIndex >= 0;
-                    
                     if (isHuman) {
+                        // Phase 04: Color variation between light purple and dark purple
+                        // Animated pulsing effect that varies intensity
+                        let timePhase = (p.frameCount * 0.02 + this.colorPhase) % p.TWO_PI;
+                        let pulse = p.sin(timePhase) * 0.3 + 0.7; // 0.4 to 1.0
+                        
+                        // Determine base color type (50% light purple, 50% dark purple)
+                        let isDarkPurple = this.colorSeed >= 0.5;
+                        
+                        // Check if easter egg is in cyan mode - color persists even after object forms
+                        let useCyan = easterEggCyanMode;
+                        
                         let r, g, b;
                         
-                        if (useSVGColors) {
-                            // Use SVG path colors when forming the logo
-                            let pathColor = svgPathColors[this.pathIndex];
-                            r = pathColor[0];
-                            g = pathColor[1];
-                            b = pathColor[2];
+                        if (useCyan) {
+                            // Cyan color scheme (easter egg mode)
+                            let cyanBase = [71, 208, 208];
+                            let lightCyan = [100, 240, 240];
+                            let darkCyan = [50, 180, 200];
+                            let darkCyanLight = [60, 200, 220];
+                            
+                            if (isDarkPurple) {
+                                // Dark cyan particles
+                                let darkIntensity = pulse;
+                                r = p.lerp(darkCyan[0], darkCyanLight[0], darkIntensity * 0.3);
+                                g = p.lerp(darkCyan[1], darkCyanLight[1], darkIntensity * 0.3);
+                                b = p.lerp(darkCyan[2], darkCyanLight[2], darkIntensity * 0.3);
+                                
+                                let pulseVariation = (pulse - 0.7) * 0.2;
+                                r = p.constrain(r + pulseVariation * 10, darkCyan[0], darkCyanLight[0]);
+                                g = p.constrain(g + pulseVariation * 12, darkCyan[1], darkCyanLight[1]);
+                                b = p.constrain(b + pulseVariation * 12, darkCyan[2], darkCyanLight[2]);
+                            } else {
+                                // Light cyan particles
+                                let whiteShimmer = (1 - pulse) * 0.15;
+                                r = p.lerp(cyanBase[0], lightCyan[0], whiteShimmer);
+                                g = p.lerp(cyanBase[1], lightCyan[1], whiteShimmer);
+                                b = p.lerp(cyanBase[2], lightCyan[2], whiteShimmer);
+                                
+                                if (z > 40) {
+                                    r = p.lerp(r, lightCyan[0], 0.3);
+                                    g = p.lerp(g, lightCyan[1], 0.3);
+                                    b = p.lerp(b, lightCyan[2], 0.3);
+                                }
+                            }
                         } else {
-                            // Phase 04: Color variation between light purple and dark purple
-                            // Animated pulsing effect that varies intensity
-                            let timePhase = (p.frameCount * 0.02 + this.colorPhase) % p.TWO_PI;
-                            let pulse = p.sin(timePhase) * 0.3 + 0.7; // 0.4 to 1.0
-                            
-                            // Determine base color type (50% light purple, 50% dark purple)
-                            let isDarkPurple = this.colorSeed >= 0.5;
-                            
                             // Purple color scheme (normal mode)
                             let purpleBase = [143, 112, 240];
                             let lightPurple = [175, 150, 255];
@@ -10947,14 +10515,13 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                             }
                         }
                         
-                        // Main particle color
-                        p.fill(r, g, b, alpha);
+                        // Main particle
+                        p.fill(r, g, b, alpha * (useCyan ? (0.9 + pulse * 0.1) : 1.0));
                     } else {
                         p.fill(71, 208, 208, 200);
                     }
                     p.noStroke();
                     
-                    // Always draw text (0 or 1), but with appropriate colors
                     // Calculate text size - ONLY adjust for phase 2 (isHuman === false)
                     // Phase 3 (isHuman === true) keeps original size for mesh readability
                     let textSize = 10; // Default size
