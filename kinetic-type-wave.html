@@ -19,48 +19,59 @@
         }
         .overlay {
             position: fixed;
-            top: 0;
-            left: 0;
+            top: 8px;
+            left: 8px;
+            width: 232px;
+            height: auto;
             background: rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            padding: 12px 16px;
+            padding: 6px 10px;
             text-align: left;
             z-index: 1000;
-            width: 200px;
-            margin-top: 8px;
-            margin-bottom: 8px;
-            margin-left: 8px;
-            margin-right: 8px;
             font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            overflow: hidden;
         }
         .overlay h1 {
             color: #fff;
-            margin: 0 0 6px 0;
-            font-size: 14px;
+            margin: 0 0 3px 0;
+            font-size: 13px;
             font-weight: bold;
             letter-spacing: 0.5px;
+            line-height: 1.2;
+            flex-shrink: 0;
         }
         .overlay p {
             color: rgba(255, 255, 255, 0.9);
-            margin: 0 0 10px 0;
-            font-size: 10px;
-            line-height: 1.4;
-            position: absolute;
-            top: 38px;
-            left: 24px;
-            width: 200px;
-            height: 42px;
+            margin: 0 0 4px 0;
+            font-size: 9px;
+            line-height: 1.2;
+            flex-shrink: 0;
+            display: block;
+            visibility: visible;
+        }
+        .overlay h1 + p {
+            margin-bottom: 8px;
+        }
+        .overlay .controls {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+            margin-top: auto;
         }
         .pause-btn {
             background: rgba(255, 255, 255, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.3);
             color: #fff;
-            padding: 4px 12px;
+            padding: 3px 10px;
             cursor: pointer;
-            font-size: 10px;
+            font-size: 9px;
             font-family: 'Courier New', monospace;
             transition: all 0.2s ease;
+            margin: 0;
         }
         .pause-btn:hover {
             background: rgba(255, 255, 255, 0.3);
@@ -90,12 +101,12 @@
             background: rgba(255, 255, 255, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.3);
             color: #fff;
-            padding: 4px 12px;
+            padding: 3px 10px;
             cursor: pointer;
-            font-size: 10px;
+            font-size: 9px;
             font-family: 'Courier New', monospace;
             transition: all 0.2s ease;
-            margin-left: 0px;
+            margin: 0;
         }
         .fullscreen-btn:hover {
             background: rgba(255, 255, 255, 0.3);
@@ -123,6 +134,10 @@
             text-align: left;
             z-index: 1000;
             font-family: 'Courier New', monospace;
+            margin-top: 8px;
+            margin-left: 8px;
+            margin-right: 8px;
+            margin-bottom: 8px;
         }
         .copyright p {
             color: rgba(255, 255, 255, 0.9);
@@ -139,8 +154,10 @@
 <div class="overlay">
     <h1>The Code Comes to Life</h1>
     <p data-cursor-element-id="cursor-el-5">Transforming the coldness of binary data into human, sovereign and living identity.</p>
-    <button class="pause-btn" id="pauseBtn">Pause</button>
-    <button class="fullscreen-btn" id="fullscreenBtn">Fullscreen</button>
+    <div class="controls">
+        <button class="pause-btn" id="pauseBtn">Pause</button>
+        <button class="fullscreen-btn" id="fullscreenBtn">Fullscreen</button>
+    </div>
 </div>
 <div class="copyright">
     <p>© 2025, TWYN</p>
