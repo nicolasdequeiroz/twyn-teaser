@@ -316,9 +316,40 @@
         logoLayout.y = drawY;
         logoLayout.path2D = new Path2D(logoPaths.join(" "));
 
-        const gridFitScale = Math.min(cols / svgViewBox.w, rows / svgViewBox.h) * 0.75;
-        const gridDrawW = svgViewBox.w * gridFitScale;
-        const gridDrawH = svgViewBox.h * gridFitScale;
+        // Calculate scale to maintain real logo proportions in the grid
+        // The logo SVG is 400x457, so aspect ratio is 400/457
+        // Grid cells are 9x11, so physical aspect ratio is 9/11
+        // To maintain real proportions, we need: (width_cells * 9) / (height_cells * 11) = 400 / 457
+        // Which means: width_cells / height_cells = (400/457) * (11/9)
+        const logoAspectRatio = svgViewBox.w / svgViewBox.h; // 400/457
+        const gridCellAspectRatio = colSpacing / rowSpacing; // 9/11
+        
+        // Calculate how many cells the logo should occupy to maintain real proportions
+        // We want: (w_cells * colSpacing) / (h_cells * rowSpacing) = logoAspectRatio
+        // So: w_cells / h_cells = logoAspectRatio * (rowSpacing / colSpacing)
+        const targetCellAspectRatio = logoAspectRatio * (rowSpacing / colSpacing);
+        
+        // Calculate scale based on available space
+        const maxWidthInCells = cols * 0.75;
+        const maxHeightInCells = rows * 0.75;
+        
+        // Calculate dimensions that fit while maintaining aspect ratio
+        let gridDrawW, gridDrawH;
+        if (maxWidthInCells / maxHeightInCells > targetCellAspectRatio) {
+            // Limited by height
+            gridDrawH = maxHeightInCells;
+            gridDrawW = gridDrawH * targetCellAspectRatio;
+        } else {
+            // Limited by width
+            gridDrawW = maxWidthInCells;
+            gridDrawH = gridDrawW / targetCellAspectRatio;
+        }
+        
+        // Now calculate the scale factors for the SVG
+        // SVG is 400x457, we want it to occupy gridDrawW x gridDrawH cells
+        const gridFitScaleX = gridDrawW / svgViewBox.w;
+        const gridFitScaleY = gridDrawH / svgViewBox.h;
+        
         const gridDrawX = (cols - gridDrawW) / 2;
         const gridDrawY = (rows - gridDrawH) / 2;
 
@@ -334,7 +365,7 @@
         offCtx.fillStyle = '#FFF';
         
         offCtx.translate(gridDrawX, gridDrawY);
-        offCtx.scale(gridFitScale, gridFitScale);
+        offCtx.scale(gridFitScaleX, gridFitScaleY);
         offCtx.fill(logoLayout.path2D);
 
         const imgData = offCtx.getImageData(0, 0, cols, rows).data;
