@@ -19,8 +19,9 @@
             margin: 0;
             padding: 0;
             width: 100%;
-            height: 100%;
-            overflow: hidden;
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
         body {
             background-color: #030303;
@@ -169,7 +170,7 @@
         }
     </style>
 </head>
-<body class="flex flex-col md:flex-row h-screen w-screen bg-black">
+<body class="flex flex-col md:flex-row min-h-screen w-screen bg-black">
     <div class="scanline"></div>
 
     <!-- VIEWPORT -->
@@ -218,7 +219,7 @@
     </div>
 
     <!-- SIDEBAR -->
-    <div class="w-full md:w-1/4 h-[30vh] md:h-full border-l border-gray-900 bg-gray-950 flex flex-col p-10 z-50 relative">
+    <div class="w-full md:w-1/4 min-h-[30vh] md:min-h-screen border-l border-gray-900 bg-gray-950 flex flex-col p-10 z-50 relative">
         <div class="mb-12 border-b border-gray-800 pb-6">
             <div class="mb-2">
                 <svg width="138" height="52" viewBox="0 0 138 52" fill="none" xmlns="http://www.w3.org/2000/svg">
