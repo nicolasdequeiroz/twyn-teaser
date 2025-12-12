@@ -211,7 +211,7 @@
         </div>
         
         <div class="absolute top-8 left-8 text-[9px] text-[#47D0D0]/60 font-mono z-20">
-            <div>GEOMETRY: <span class="text-[#47D0D0]">HUMAN_CORE</span></div>
+            <div>GEOMETRY: <span class="text-[#47D0D0]">IDENTITY_MANIFEST</span></div>
             <div>PARTICLES: <span id="count" class="text-[#47D0D0]">0</span></div>
             <div>FPS: <span id="fps" class="text-[#47D0D0]">0</span></div>
         </div>
@@ -9934,7 +9934,19 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                 // Calculate responsive fontSize - optimized for text visibility on all screen sizes
                 let canvasArea = p.width * p.height;
                 let minDimension = p.min(p.width, p.height);
-                let baseFontSize = minDimension / 28;
+                
+                // For wider screens (like 1260x749), consider width in font size calculation
+                // to prevent words from breaking incorrectly
+                let baseFontSize;
+                if (p.width / p.height > 1.5) {
+                    // Wide screen - use a balance between width and height for better text formation
+                    // Use a slightly larger divisor to ensure adequate font size
+                    baseFontSize = Math.max(p.width / 45, minDimension / 25); // Ensure minimum size
+                } else {
+                    // Standard or tall screen - use min dimension
+                    baseFontSize = minDimension / 28;
+                }
+                
                 let fontSize = baseFontSize;
                 
                 // Optimize font size for better text formation on smaller screens
@@ -9943,8 +9955,15 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                     fontSize = baseFontSize * 0.85; // Only 15% smaller (was 0.7) for better pixel density
                 } else if (canvasArea < 768000) { // Medium screens (~1024x750)
                     fontSize = baseFontSize * 0.9; // Only 10% smaller (was 0.85)
-                } else if (canvasArea < 1200000) { // Medium-large screens
-                    fontSize = baseFontSize * 0.95; // Only 5% smaller (was 0.9)
+                } else if (canvasArea < 1200000) { // Medium-large screens (like 1260x749)
+                    // For this range, use full base size to ensure all words form properly
+                    fontSize = baseFontSize; // No reduction to ensure adequate pixel density for all words
+                }
+                
+                // Ensure minimum font size for text formation (especially important for shorter words)
+                const minFontSize = 22;
+                if (fontSize < minFontSize) {
+                    fontSize = minFontSize;
                 }
                 
                 // #region agent log
@@ -9965,8 +9984,16 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                 
                 // Process keywords with word wrapping for long words
                 let processedKeywords = [];
-                // Use 80% of canvas width for better margin and readability on small screens
-                let maxWidth = p.width * 0.80;
+                // Adjust maxWidth based on screen size for better responsiveness
+                // For medium-large screens (like 1260x749), use a slightly larger percentage
+                let maxWidthPercentage = 0.80;
+                if (canvasArea >= 768000 && canvasArea < 1200000) {
+                    // Medium-large screens: use 85% for better text fitting
+                    maxWidthPercentage = 0.85;
+                } else if (canvasArea >= 1200000) {
+                    maxWidthPercentage = 0.90;
+                }
+                let maxWidth = p.width * maxWidthPercentage;
                 
                 CONFIG.keywords.forEach((w) => {
                     pg.textSize(fontSize);
@@ -9983,19 +10010,52 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                         let currentLine = '';
                         
                         words.forEach((word, idx) => {
-                            let testLine = currentLine ? currentLine + ' ' + word : word;
-                            let testWidth = pg.textWidth(testLine);
+                            // Check if single word is too long - if so, we need to handle it specially
+                            pg.textSize(fontSize);
+                            let singleWordWidth = pg.textWidth(word);
                             
-                            if (testWidth > maxWidth && currentLine) {
-                                // Current line is full, start new line
-                                lines.push(currentLine);
-                                currentLine = word;
+                            if (singleWordWidth > maxWidth) {
+                                // Single word is too long - push current line if exists
+                                if (currentLine) {
+                                    lines.push(currentLine);
+                                    currentLine = '';
+                                }
+                                // Split long word at natural break points (parentheses)
+                                // This handles cases like "SSI (Self Sovereign Identity)"
+                                if (word.includes('(') && word.includes(')')) {
+                                    // Split at opening parenthesis, keeping the parenthesis with the content
+                                    let openIdx = word.indexOf('(');
+                                    let beforeParen = word.substring(0, openIdx).trim();
+                                    let afterParen = word.substring(openIdx);
+                                    
+                                    if (beforeParen) {
+                                        lines.push(beforeParen);
+                                    }
+                                    if (afterParen) {
+                                        lines.push(afterParen);
+                                    }
+                                } else {
+                                    // No natural break points, just add the word
+                                    // It will render slightly clipped but particles will still form correctly
+                                    lines.push(word);
+                                }
                             } else {
-                                currentLine = testLine;
+                                // Normal word wrapping logic
+                                let testLine = currentLine ? currentLine + ' ' + word : word;
+                                pg.textSize(fontSize);
+                                let testWidth = pg.textWidth(testLine);
+                                
+                                if (testWidth > maxWidth && currentLine) {
+                                    // Current line is full, start new line
+                                    lines.push(currentLine);
+                                    currentLine = word;
+                                } else {
+                                    currentLine = testLine;
+                                }
                             }
                             
                             // If this is the last word, add the line
-                            if (idx === words.length - 1) {
+                            if (idx === words.length - 1 && currentLine) {
                                 lines.push(currentLine);
                             }
                         });
@@ -10010,8 +10070,67 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                     }
                 });
                 
-                let totalH = processedKeywords.length * lineHeight;
-                let startY = (p.height - totalH) / 2 + fontSize;
+                // Calculate total height with proper margins to prevent text from being cut off
+                // Since textAlign is CENTER, CENTER, the Y coordinate is the center of the text
+                // We need to account for half the text height above and below the center point
+                let textHeight = fontSize * 1.4; // Approximate text height including descenders and ascenders
+                let halfTextHeight = textHeight * 0.5; // Half height for CENTER alignment
+                let totalH = (processedKeywords.length - 1) * lineHeight; // Height between line centers
+                
+                // Calculate margins to ensure all text fits completely
+                // Need margin for: half text height above first line + half text height below last line
+                let minMargin = halfTextHeight * 1.2; // Minimum margin to prevent cutting
+                if (canvasArea >= 768000 && canvasArea < 1200000) {
+                    // For medium-large screens, use larger margins to ensure no cutting
+                    minMargin = halfTextHeight * 1.5;
+                }
+                
+                // Calculate available height for text centers (excluding margins)
+                let availableHeight = p.height - (minMargin * 2);
+                
+                // If text doesn't fit, adjust line spacing to fit within available space
+                if (totalH > availableHeight) {
+                    // Reduce line spacing proportionally to fit
+                    let scaleFactor = availableHeight / totalH;
+                    lineHeight = lineHeight * scaleFactor;
+                    totalH = (processedKeywords.length - 1) * lineHeight;
+                }
+                
+                // Center the text vertically with proper margins
+                // startY is the Y coordinate for the first line's center (due to CENTER alignment)
+                let startY = minMargin + (availableHeight - totalH) / 2;
+                
+                // Verify all lines fit within bounds
+                // First line center: startY, so top is at startY - halfTextHeight
+                let firstLineTop = startY - halfTextHeight;
+                // Last line center: startY + totalH, so bottom is at that + halfTextHeight
+                let lastLineCenter = startY + totalH;
+                let lastLineBottom = lastLineCenter + halfTextHeight;
+                
+                // Ensure first line doesn't get cut at top
+                if (firstLineTop < 0) {
+                    startY = halfTextHeight;
+                    lastLineCenter = startY + totalH;
+                    lastLineBottom = lastLineCenter + halfTextHeight;
+                }
+                
+                // Ensure last line doesn't get cut at bottom
+                if (lastLineBottom > p.height) {
+                    // Adjust startY to fit last line
+                    startY = p.height - totalH - halfTextHeight;
+                    firstLineTop = startY - halfTextHeight;
+                    
+                    // If first line would now be cut, reduce line spacing
+                    if (firstLineTop < 0) {
+                        // Calculate maximum available space
+                        let maxAvailable = p.height - textHeight; // Total height minus text height
+                        if (maxAvailable > 0 && processedKeywords.length > 1) {
+                            lineHeight = maxAvailable / (processedKeywords.length - 1);
+                            totalH = (processedKeywords.length - 1) * lineHeight;
+                            startY = halfTextHeight;
+                        }
+                    }
+                }
                 
                 // #region agent log
                 fetch('http://127.0.0.1:7243/ingest/9ab58ff3-d81c-43fb-ace5-d766e655fce6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'generateTextTargets:beforeText',message:'Before rendering text',data:{lineHeight,totalH,startY,originalKeywords:CONFIG.keywords,processedKeywords,canvasWidth:p.width,maxWidth},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
@@ -10035,8 +10154,8 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                     step = 1; // More dense sampling for better text formation
                 } else if (canvasArea < 768000) { // Medium screens
                     step = 1; // More dense for better text formation
-                } else if (canvasArea < 1200000) { // Medium-large screens
-                    step = 2; // Standard density
+                } else if (canvasArea < 1200000) { // Medium-large screens (like 1260x749)
+                    step = 1; // Use dense sampling to ensure all text pixels are captured, especially for shorter words
                 }
                 
                 // Adjust pixel threshold based on screen size for better text capture
@@ -10045,28 +10164,117 @@ f 625/3130/3129 617/3131/3130 81/3132/3131 628/3133/3132
                     pixelThreshold = 60; // Lower threshold (was 70) for better text capture on small screens
                 } else if (canvasArea < 768000) { // Medium screens
                     pixelThreshold = 80; // Lower threshold (was 85) for better capture
+                } else if (canvasArea < 1200000) { // Medium-large screens (like 1260x749)
+                    pixelThreshold = 70; // Even lower threshold to ensure all text pixels are captured, especially for shorter words like "BioLock Chain"
                 }
                 
                 // #region agent log
                 fetch('http://127.0.0.1:7243/ingest/9ab58ff3-d81c-43fb-ace5-d766e655fce6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'generateTextTargets:sampling',message:'Sampling parameters',data:{step,pixelThreshold,canvasArea},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
                 // #endregion
                 
-                // Maximum targets limit to prevent overload
-                const MAX_TEXT_TARGETS = 5000;
+                // Maximum targets limit - increased for better text formation, especially for all words
+                let MAX_TEXT_TARGETS = 5000;
+                if (canvasArea >= 768000 && canvasArea < 1200000) {
+                    // Increase limit for medium-large screens to ensure all words are fully formed
+                    MAX_TEXT_TARGETS = 6500;
+                }
+                
                 let targetCount = 0;
                 
+                // Collect pixels with priority for ensuring all lines are represented
+                // Process from top to bottom to ensure even distribution
+                let pixelsByLine = {};
+                for(let i = 0; i < processedKeywords.length; i++) {
+                    pixelsByLine[i] = [];
+                }
+                
+                // First pass: collect pixels and group by line
                 for(let y=0; y<p.height; y+=step) {
                     for(let x=0; x<p.width; x+=step) {
-                        // Stop if we've reached maximum targets
-                        if (targetCount >= MAX_TEXT_TARGETS) break;
-                        
                         let idx = (x + y * p.width) * 4;
                         if(pg.pixels[idx] > pixelThreshold) {
-                            targets.push(p.createVector(x - p.width/2, y - p.height/2, 0));
+                            // Determine which line this pixel belongs to
+                            let lineIndex = Math.floor((y - startY + lineHeight/2) / lineHeight);
+                            if (lineIndex >= 0 && lineIndex < processedKeywords.length) {
+                                pixelsByLine[lineIndex].push({
+                                    x: x - p.width/2,
+                                    y: y - p.height/2
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                // Distribute targets evenly across all lines to ensure all words form properly
+                // This ensures "BioLock Chain" and other words get adequate particles
+                let targetsPerLine = Math.ceil(MAX_TEXT_TARGETS / processedKeywords.length);
+                let minTargetsPerLine = Math.floor(targetsPerLine * 0.8); // Minimum 80% per line to ensure all words form
+                
+                // Use a Set to track added pixels more efficiently (rounded coordinates)
+                let addedPixels = new Set();
+                let getPixelKey = (x, y) => Math.round(x * 10) + '_' + Math.round(y * 10);
+                
+                // Add pixels from each line, ensuring minimum per line
+                // This guarantees all lines (including "BioLock Chain") get adequate targets
+                for(let lineIdx = 0; lineIdx < processedKeywords.length; lineIdx++) {
+                    let linePixels = pixelsByLine[lineIdx] || [];
+                    let addedFromLine = 0;
+                    
+                    // First, ensure minimum targets for this line
+                    for(let pixel of linePixels) {
+                        if (targetCount >= MAX_TEXT_TARGETS) break;
+                        if (addedFromLine < minTargetsPerLine) {
+                            let key = getPixelKey(pixel.x, pixel.y);
+                            if (!addedPixels.has(key)) {
+                                targets.push(p.createVector(pixel.x, pixel.y, 0));
+                                addedPixels.add(key);
+                                targetCount++;
+                                addedFromLine++;
+                            }
+                        }
+                    }
+                }
+                
+                // Then fill remaining space, distributing evenly across all lines
+                let remainingSpace = MAX_TEXT_TARGETS - targetCount;
+                if (remainingSpace > 0) {
+                    let pixelsPerLineRemaining = Math.ceil(remainingSpace / processedKeywords.length);
+                    
+                    for(let lineIdx = 0; lineIdx < processedKeywords.length; lineIdx++) {
+                        if (targetCount >= MAX_TEXT_TARGETS) break;
+                        let linePixels = pixelsByLine[lineIdx] || [];
+                        let addedFromLine = 0;
+                        
+                        for(let pixel of linePixels) {
+                            if (targetCount >= MAX_TEXT_TARGETS) break;
+                            if (addedFromLine < pixelsPerLineRemaining) {
+                                let key = getPixelKey(pixel.x, pixel.y);
+                                if (!addedPixels.has(key)) {
+                                    targets.push(p.createVector(pixel.x, pixel.y, 0));
+                                    addedPixels.add(key);
+                                    targetCount++;
+                                    addedFromLine++;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Final pass: fill any remaining space with any available pixels (prioritize last lines)
+                // This ensures "BioLock Chain" gets any remaining targets
+                for(let lineIdx = processedKeywords.length - 1; lineIdx >= 0; lineIdx--) {
+                    if (targetCount >= MAX_TEXT_TARGETS) break;
+                    let linePixels = pixelsByLine[lineIdx] || [];
+                    
+                    for(let pixel of linePixels) {
+                        if (targetCount >= MAX_TEXT_TARGETS) break;
+                        let key = getPixelKey(pixel.x, pixel.y);
+                        if (!addedPixels.has(key)) {
+                            targets.push(p.createVector(pixel.x, pixel.y, 0));
+                            addedPixels.add(key);
                             targetCount++;
                         }
                     }
-                    if (targetCount >= MAX_TEXT_TARGETS) break;
                 }
                 
                 // #region agent log
